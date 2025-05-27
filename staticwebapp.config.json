@@ -1,0 +1,31 @@
+{
+  "routes": [
+    {
+      "route": "/print",
+      "serve": "/index.html",
+      "statusCode": 200
+    },
+    {
+      "route": "/print/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    },
+    {
+      "route": "/*",
+      "serve": "/index.html",
+      "statusCode": 200
+    }
+  ],
+  "responseOverrides": {
+    "404": {
+      "rewrite": "/index.html",
+      "statusCode": 200
+    }
+  },
+  "globalHeaders": {
+    "Cache-Control": "no-cache, no-store, must-revalidate",
+    "X-Frame-Options": "SAMEORIGIN",
+    "Content-Security-Policy": "frame-ancestors 'self' https://secure-print-docs-2025.s3.eu-north-1.amazonaws.com",
+    "Access-Control-Allow-Origin": "*"
+  }
+} 
