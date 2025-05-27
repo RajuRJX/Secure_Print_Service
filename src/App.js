@@ -31,10 +31,20 @@ function App() {
     // Get document URL from query parameters
     const urlParams = new URLSearchParams(window.location.search);
     const url = urlParams.get('url');
-    if (url) {
-      setDocumentUrl(decodeURIComponent(url));
-    } else {
+    
+    if (!url) {
       setError('No document URL provided');
+      return;
+    }
+
+    try {
+      const decodedUrl = decodeURIComponent(url);
+      // Validate URL
+      new URL(decodedUrl);
+      setDocumentUrl(decodedUrl);
+    } catch (err) {
+      console.error('Invalid URL:', err);
+      setError('Invalid document URL provided');
     }
   }, []);
 
@@ -107,8 +117,19 @@ function App() {
         }, 1000);
       };
 
+      // Handle iframe load error
+      iframe.onerror = () => {
+        setError('Failed to load document');
+        setLoading(false);
+        if (printFrameRef.current) {
+          document.body.removeChild(printFrameRef.current);
+          printFrameRef.current = null;
+        }
+      };
+
       setLoading(false);
     } catch (err) {
+      console.error('Print error:', err);
       setError(err.message || 'Failed to print document');
       setLoading(false);
     }
@@ -122,31 +143,33 @@ function App() {
             Secure Print Service
           </Typography>
 
-          <Box sx={{ mt: 3 }}>
-            <FormControl fullWidth sx={{ mt: 3 }}>
-              <InputLabel>Print Mode</InputLabel>
-              <Select
-                value={printMode}
-                label="Print Mode"
-                onChange={(e) => setPrintMode(e.target.value)}
-              >
-                {printModes.map((mode) => (
-                  <MenuItem key={mode.id} value={mode.id}>
-                    {mode.name}
-                  </MenuItem>
-                ))}
-              </Select>
-            </FormControl>
+          {documentUrl && (
+            <Box sx={{ mt: 3 }}>
+              <FormControl fullWidth sx={{ mt: 3 }}>
+                <InputLabel>Print Mode</InputLabel>
+                <Select
+                  value={printMode}
+                  label="Print Mode"
+                  onChange={(e) => setPrintMode(e.target.value)}
+                >
+                  {printModes.map((mode) => (
+                    <MenuItem key={mode.id} value={mode.id}>
+                      {mode.name}
+                    </MenuItem>
+                  ))}
+                </Select>
+              </FormControl>
 
-            <Button
-              variant="contained"
-              onClick={handlePrint}
-              disabled={loading || !documentUrl || !printMode}
-              sx={{ mt: 3 }}
-            >
-              Print Document
-            </Button>
-          </Box>
+              <Button
+                variant="contained"
+                onClick={handlePrint}
+                disabled={loading || !documentUrl || !printMode}
+                sx={{ mt: 3 }}
+              >
+                Print Document
+              </Button>
+            </Box>
+          )}
 
           {loading && (
             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, mt: 3 }}>
