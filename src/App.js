@@ -67,35 +67,29 @@ function App() {
       iframe.onload = () => {
         setPrintStatus('printing');
         
-        // Create a print window with minimal content
-        const printWindow = window.open('', '_blank', 'width=1,height=1');
-        if (printWindow) {
-          // Add minimal content to prevent document visibility
-          printWindow.document.write(`
-            <html>
-              <head>
-                <title>Print Document</title>
-                <style>
-                  body { margin: 0; padding: 0; }
-                  .print-content { display: none; }
-                </style>
-              </head>
-              <body>
-                <div class="print-content">
-                  <iframe src="${documentUrl}" style="display:none;"></iframe>
-                </div>
-                <script>
-                  window.onload = function() {
-                    window.print();
-                    setTimeout(function() {
-                      window.close();
-                    }, 1000);
-                  };
-                </script>
-              </body>
-            </html>
-          `);
-          printWindow.document.close();
+        if (printMode === 'print') {
+          // For direct printing
+          iframe.contentWindow.print();
+        } else {
+          // For PDF saving
+          const printWindow = window.open('', '_blank');
+          if (printWindow) {
+            printWindow.document.write(`
+              <html>
+                <head>
+                  <title>Save as PDF</title>
+                  <style>
+                    body { margin: 0; padding: 0; }
+                    iframe { width: 100%; height: 100vh; border: none; }
+                  </style>
+                </head>
+                <body>
+                  <iframe src="${documentUrl}"></iframe>
+                </body>
+              </html>
+            `);
+            printWindow.document.close();
+          }
         }
 
         // Clean up after printing
