@@ -25,7 +25,6 @@ function App() {
   // Print modes
   const printModes = [
     { id: 'print', name: 'Print Document' },
-    { id: 'pdf', name: 'Save as PDF' }
   ];
 
   useEffect(() => {
