@@ -12,6 +12,7 @@ import {
   Select,
   MenuItem
 } from '@mui/material';
+import axios from 'axios';
 
 function App() {
   const [loading, setLoading] = useState(false);
@@ -64,70 +65,83 @@ function App() {
       setError('');
       setPrintStatus('initializing');
 
+      // Fetch the document content through our proxy
+      const proxyUrl = `/proxy?url=${encodeURIComponent(documentUrl)}`;
+      const response = await axios.get(proxyUrl, {
+        responseType: 'blob'
+      });
+
+      // Create a blob URL for the document
+      const blob = new Blob([response.data], { type: response.headers['content-type'] });
+      const blobUrl = URL.createObjectURL(blob);
+
       // Create a hidden iframe for printing
       const iframe = document.createElement('iframe');
       iframe.style.display = 'none';
       document.body.appendChild(iframe);
       printFrameRef.current = iframe;
 
-      // Load the document in the iframe
-      iframe.src = documentUrl;
-
-      // When iframe loads, trigger print dialog
+      // Write the document content to the iframe
       iframe.onload = () => {
-        setPrintStatus('printing');
-        
-        if (printMode === 'print') {
-          // For direct printing
+        try {
+          // Trigger print dialog
           iframe.contentWindow.print();
-        } else {
-          // For PDF saving
-          const printWindow = window.open('', '_blank');
-          if (printWindow) {
-            printWindow.document.write(`
-              <html>
-                <head>
-                  <title>Save as PDF</title>
-                  <style>
-                    body { margin: 0; padding: 0; }
-                    iframe { width: 100%; height: 100vh; border: none; }
-                  </style>
-                </head>
-                <body>
-                  <iframe src="${documentUrl}"></iframe>
-                </body>
-              </html>
-            `);
-            printWindow.document.close();
-          }
-        }
+          setPrintStatus('printing');
 
-        // Clean up after printing
-        setTimeout(() => {
+          // Clean up after printing
+          setTimeout(() => {
+            // Revoke the blob URL
+            URL.revokeObjectURL(blobUrl);
+            
+            // Remove the iframe
+            if (printFrameRef.current) {
+              document.body.removeChild(printFrameRef.current);
+              printFrameRef.current = null;
+            }
+            
+            setPrintStatus('completed');
+            setLoading(false);
+            
+            // Close the window after a delay
+            setTimeout(() => {
+              window.close();
+            }, 2000);
+          }, 1000);
+        } catch (printError) {
+          console.error('Print error:', printError);
+          setError('Failed to trigger print dialog. Please try again.');
+          setLoading(false);
+          
+          // Clean up
+          URL.revokeObjectURL(blobUrl);
           if (printFrameRef.current) {
             document.body.removeChild(printFrameRef.current);
             printFrameRef.current = null;
           }
-          setPrintStatus('completed');
-          
-          // Close the window after a delay
-          setTimeout(() => {
-            window.close();
-          }, 2000);
-        }, 1000);
-      };
-
-      // Handle iframe load error
-      iframe.onerror = () => {
-        setError('Failed to load document');
-        setLoading(false);
-        if (printFrameRef.current) {
-          document.body.removeChild(printFrameRef.current);
-          printFrameRef.current = null;
         }
       };
 
-      setLoading(false);
+      // Write the document to the iframe
+      const iframeDoc = iframe.contentDocument || iframe.contentWindow.document;
+      iframeDoc.open();
+      iframeDoc.write(`
+        <html>
+          <head>
+            <title>Print Document</title>
+            <style>
+              body { margin: 0; padding: 0; }
+              @media print {
+                body { -webkit-print-color-adjust: exact; }
+              }
+            </style>
+          </head>
+          <body>
+            <embed src="${blobUrl}" type="${response.headers['content-type']}" width="100%" height="100%" />
+          </body>
+        </html>
+      `);
+      iframeDoc.close();
+
     } catch (err) {
       console.error('Print error:', err);
       setError(err.message || 'Failed to print document');
